@@ -1,6 +1,7 @@
 package tracker
 
 import (
+	"airdispat.ch/crypto"
 	"airdispat.ch/identity"
 	"airdispat.ch/message"
 	"airdispat.ch/tracker/wire"
@@ -41,6 +42,7 @@ func (b *TrackerQueryMessage) Header() message.Header {
 type TrackerRegistrationMessage struct {
 	Address  string
 	Location string
+	Key      []byte
 }
 
 func TrackerRegistrationMessageFromBytes(b []byte) *TrackerRegistrationMessage {
@@ -53,15 +55,17 @@ func TrackerRegistrationMessageFromBytes(b []byte) *TrackerRegistrationMessage {
 	return &TrackerRegistrationMessage{
 		Address:  q.GetAddress(),
 		Location: q.GetLocation(),
+		Key:      q.GetEncryptionKey(),
 	}
 }
 
 func (b *TrackerRegistrationMessage) ToBytes() []byte {
 	expirationTime := uint64(time.Now().Add(time.Hour * 24 * 7).Unix())
 	q := &wire.TrackerRegister{
-		Address:  &b.Address,
-		Location: &b.Location,
-		Expires:  &expirationTime,
+		Address:       &b.Address,
+		Location:      &b.Location,
+		Expires:       &expirationTime,
+		EncryptionKey: b.Key,
 	}
 	bytes, err := proto.Marshal(q)
 	if err != nil {
@@ -131,6 +135,13 @@ func (a *TrackerRouter) Lookup(addrString string) (*identity.Address, error) {
 	i := identity.CreateAddressFromString(reg.Address)
 	i.Location = reg.Location
 
+	rsa, err := crypto.BytesToRSA(reg.Key)
+	if err != nil {
+		return nil, err
+	}
+
+	i.EncryptionKey = rsa
+
 	return i, nil
 }
 
@@ -139,7 +150,13 @@ func (a *TrackerRouter) LookupAlias(alias string) (*identity.Address, error) {
 }
 
 func (a *TrackerRouter) Register(key *identity.Identity) (err error) {
-	q := &TrackerRegistrationMessage{key.Address.String(), key.Address.Location}
+	byteKey := crypto.RSAToBytes(key.Address.EncryptionKey)
+
+	q := &TrackerRegistrationMessage{
+		Address:  key.Address.String(),
+		Location: key.Address.Location,
+		Key:      byteKey,
+	}
 
 	signed, err := message.SignMessage(q, a.origin)
 	if err != nil {
