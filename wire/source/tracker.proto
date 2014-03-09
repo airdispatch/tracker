@@ -1,0 +1,22 @@
+package wire;
+
+// TRG - Used to register an address's location with the tracker.
+message TrackerRegister {
+	required string address = 1;   // The address to Register
+	required bytes encryption_key = 2; // The public Encryption Key
+	required string location = 3;  // The locaiton of the user
+
+	required uint64 expires = 4; // The time at which this registration expires.
+
+	optional string username = 5;  // An optional username field
+}
+
+// TQE - Used to query the mailserver for the location of the address.
+message TrackerQuery {
+	// The Request may be for an Address or a Username
+	optional string address  = 1;
+	optional string username = 2;
+
+	// The Requester may specify False here if it does not want the Key Returned
+	optional bool need_key = 3;
+}
