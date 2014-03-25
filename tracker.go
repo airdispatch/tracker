@@ -23,9 +23,10 @@ type TrackerDelegate interface {
 	LogMessage(toLog string)
 	AllowConnection(fromAddr *identity.Address) bool
 
-	SaveRecord(address *identity.Address, record *message.SignedMessage)
+	SaveRecord(address *identity.Address, record *message.SignedMessage, alias string)
 
 	GetRecordByAddress(address *identity.Address) *message.SignedMessage
+	GetRecordByAlias(alias string) *message.SignedMessage
 }
 
 // The tracker structure that holds variables to the delegate
@@ -122,7 +123,7 @@ func (t *Tracker) handleClient(conn net.Conn) {
 			t.handleError("Unable to verify message integrity.", errors.New("Unable to verify message integrity."))
 		}
 
-		t.Delegate.SaveRecord(header.From, s)
+		t.Delegate.SaveRecord(header.From, s, assigned.GetUsername())
 
 	// Handle Query
 	case wire.QueryCode:
@@ -140,7 +141,12 @@ func (t *Tracker) handleClient(conn net.Conn) {
 }
 
 func (t *Tracker) handleQuery(theAddress *identity.Address, req *wire.TrackerQuery, conn net.Conn) {
-	info := t.Delegate.GetRecordByAddress(identity.CreateAddressFromString(req.GetAddress()))
+	var info *message.SignedMessage
+	if req.GetUsername() == "" {
+		info = t.Delegate.GetRecordByAddress(identity.CreateAddressFromString(req.GetAddress()))
+	} else {
+		info = t.Delegate.GetRecordByAlias(req.GetUsername())
+	}
 
 	// Return an Error Message if we could not find the address
 	if info == nil {

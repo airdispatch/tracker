@@ -18,11 +18,13 @@ type TrackerRouter struct {
 type TrackerQueryMessage struct {
 	From    *identity.Identity
 	Address string
+	Alias   string
 }
 
 func (b *TrackerQueryMessage) ToBytes() []byte {
 	q := &wire.TrackerQuery{
-		Address: &b.Address,
+		Address:  &b.Address,
+		Username: &b.Alias,
 	}
 	bytes, err := proto.Marshal(q)
 	if err != nil {
@@ -83,7 +85,19 @@ func (b *TrackerRegistrationMessage) Header() message.Header {
 }
 
 func (a *TrackerRouter) Lookup(addrString string) (*identity.Address, error) {
-	q := &TrackerQueryMessage{a.origin, addrString}
+	return a.lookup(addrString, "")
+}
+
+func (a *TrackerRouter) LookupAlias(alias string) (*identity.Address, error) {
+	return a.lookup("", alias)
+}
+
+func (a *TrackerRouter) lookup(addrString string, alias string) (*identity.Address, error) {
+	q := &TrackerQueryMessage{
+		From:    a.origin,
+		Address: addrString,
+		Alias:   alias,
+	}
 
 	signed, err := message.SignMessage(q, a.origin)
 	if err != nil {
@@ -143,10 +157,6 @@ func (a *TrackerRouter) Lookup(addrString string) (*identity.Address, error) {
 	i.EncryptionKey = rsa
 
 	return i, nil
-}
-
-func (a *TrackerRouter) LookupAlias(alias string) (*identity.Address, error) {
-	return nil, errors.New("Don't support aliases currently.")
 }
 
 func (a *TrackerRouter) Register(key *identity.Identity) (err error) {

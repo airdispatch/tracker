@@ -12,12 +12,14 @@ var port = flag.String("port", "2048", "select the port on which to run the trac
 var key_file = flag.String("key", "", "the file that will save or load your keys")
 
 var storedAddresses map[string]*message.SignedMessage
+var aliasedAddresses map[string]*message.SignedMessage
 
 func main() {
 	flag.Parse()
 
 	// Initialize the Database of Addresses
 	storedAddresses = make(map[string]*message.SignedMessage)
+	aliasedAddresses = make(map[string]*message.SignedMessage)
 
 	loadedKey, err := identity.LoadKeyFromFile(*key_file)
 
@@ -52,13 +54,23 @@ type myTracker struct {
 	tracker.BasicTracker
 }
 
-func (myTracker) SaveRecord(address *identity.Address, record *message.SignedMessage) {
+func (myTracker) SaveRecord(address *identity.Address, record *message.SignedMessage, alias string) {
 	// Store the RegisterdAddress in the Database
 	storedAddresses[address.String()] = record
+
+	if alias != "" {
+		aliasedAddresses[alias] = record
+	}
 }
 
 func (myTracker) GetRecordByAddress(address *identity.Address) *message.SignedMessage {
 	// Lookup the Address (by address) in the Database
 	info, _ := storedAddresses[address.String()]
+	return info
+}
+
+func (myTracker) GetRecordByAlias(alias string) *message.SignedMessage {
+	// Lookup the Address (by address) in the Database
+	info, _ := aliasedAddresses[alias]
 	return info
 }
