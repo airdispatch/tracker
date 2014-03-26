@@ -7,8 +7,21 @@ import (
 	"airdispat.ch/tracker/wire"
 	"code.google.com/p/goprotobuf/proto"
 	"errors"
+	"fmt"
+	"net"
 	"time"
 )
+
+func GetTrackingServerLocationFromURL(url string) string {
+	_, recs, err := net.LookupSRV("adtp", "tcp", url)
+	if err != nil {
+		return url
+	}
+	for _, s := range recs {
+		return fmt.Sprintf("%s:%d", s.Target, s.Port)
+	}
+	return url
+}
 
 type TrackerRouter struct {
 	URL    string
