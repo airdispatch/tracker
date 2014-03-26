@@ -181,7 +181,7 @@ func (a *TrackerRouter) Register(key *identity.Identity) (err error) {
 		Key:      byteKey,
 	}
 
-	signed, err := message.SignMessage(q, a.origin)
+	signed, err := message.SignMessage(q, key)
 	if err != nil {
 		return
 	}
