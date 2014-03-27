@@ -25,7 +25,7 @@ func GetTrackingServerLocationFromURL(url string) string {
 
 type TrackerRouter struct {
 	URL    string
-	origin *identity.Identity
+	Origin *identity.Identity
 }
 
 type TrackerQueryMessage struct {
@@ -57,6 +57,7 @@ func (b *TrackerQueryMessage) Header() message.Header {
 type TrackerRegistrationMessage struct {
 	Address  string
 	Location string
+	Alias    string
 	Key      []byte
 }
 
@@ -71,6 +72,7 @@ func TrackerRegistrationMessageFromBytes(b []byte) *TrackerRegistrationMessage {
 		Address:  q.GetAddress(),
 		Location: q.GetLocation(),
 		Key:      q.GetEncryptionKey(),
+		Alias:    q.GetUsername(),
 	}
 }
 
@@ -79,6 +81,7 @@ func (b *TrackerRegistrationMessage) ToBytes() []byte {
 	q := &wire.TrackerRegister{
 		Address:       &b.Address,
 		Location:      &b.Location,
+		Username:      &b.Alias,
 		Expires:       &expirationTime,
 		EncryptionKey: b.Key,
 	}
@@ -107,12 +110,12 @@ func (a *TrackerRouter) LookupAlias(alias string) (*identity.Address, error) {
 
 func (a *TrackerRouter) lookup(addrString string, alias string) (*identity.Address, error) {
 	q := &TrackerQueryMessage{
-		From:    a.origin,
+		From:    a.Origin,
 		Address: addrString,
 		Alias:   alias,
 	}
 
-	signed, err := message.SignMessage(q, a.origin)
+	signed, err := message.SignMessage(q, a.Origin)
 	if err != nil {
 		return nil, err
 	}
@@ -172,12 +175,13 @@ func (a *TrackerRouter) lookup(addrString string, alias string) (*identity.Addre
 	return i, nil
 }
 
-func (a *TrackerRouter) Register(key *identity.Identity) (err error) {
+func (a *TrackerRouter) Register(key *identity.Identity, alias string) (err error) {
 	byteKey := crypto.RSAToBytes(key.Address.EncryptionKey)
 
 	q := &TrackerRegistrationMessage{
 		Address:  key.Address.String(),
 		Location: key.Address.Location,
+		Alias:    alias,
 		Key:      byteKey,
 	}
 
@@ -272,10 +276,49 @@ func (a *TrackerListRouter) Lookup(addr string) (*identity.Address, error) {
 	return nil, errors.New("Unable to find address in trackers.")
 }
 
-// This is non-deterministic... Yes. That isn't the correct word. Sorry.
-func (a *TrackerListRouter) Register(key *identity.Identity) error {
+func (a *TrackerListRouter) LookupAlias(addr string) (*identity.Address, error) {
+	data := make(chan *identity.Address)
+	errChan := make(chan error)
+	timeout := make(chan bool)
+
+	go func() {
+		time.Sleep(30 * time.Second)
+		timeout <- true
+	}()
+
+	queryFunction := func(c chan *identity.Address, t *TrackerRouter) {
+		response, err := t.LookupAlias(addr)
+		if err != nil {
+			errChan <- err
+			return
+		}
+
+		c <- response
+	}
+
 	for _, tracker := range a.trackers {
-		go tracker.Register(key)
+		go queryFunction(data, tracker)
+	}
+
+	errorCount := 0
+
+	for errorCount < len(a.trackers) {
+		select {
+		case d := <-data:
+			return d, nil
+		case <-errChan:
+			errorCount++
+		case <-timeout:
+			return nil, errors.New("All trackers timed out.")
+		}
+	}
+	return nil, errors.New("Unable to find address in trackers.")
+}
+
+// This is non-deterministic... Yes. That isn't the correct word. Sorry.
+func (a *TrackerListRouter) Register(key *identity.Identity, alias string) error {
+	for _, tracker := range a.trackers {
+		go tracker.Register(key, alias)
 	}
 	return nil
 }
