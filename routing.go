@@ -151,7 +151,7 @@ func (a *TrackerRouter) lookup(addrString string, alias string) (*identity.Addre
 		return nil, errors.New("Unable to verify message.")
 	}
 
-	d, mType, _, err := sin.ReconstructMessage()
+	d, mType, _, err := sin.ReconstructMessageWithoutTimestamp()
 	if err != nil {
 		return nil, err
 	}
