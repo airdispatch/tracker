@@ -7,6 +7,7 @@ import (
 	"code.google.com/p/goprotobuf/proto"
 	"errors"
 	"net"
+	"time"
 )
 
 // The error Structure used to store all of the
@@ -20,7 +21,7 @@ type TrackerError struct {
 // implementation
 type TrackerDelegate interface {
 	HandleError(err *TrackerError)
-	LogMessage(toLog string)
+	LogMessage(toLog ...string)
 	AllowConnection(fromAddr *identity.Address) bool
 
 	SaveRecord(address *identity.Address, record *message.SignedMessage, alias string)
@@ -80,8 +81,11 @@ func (t *Tracker) trackerLoop(listener *net.TCPListener) {
 
 // Called when the tracker connects to a client.
 func (t *Tracker) handleClient(conn net.Conn) {
-	defer conn.Close()
+	t.Delegate.LogMessage("Serving", conn.RemoteAddr().String())
+	tNow := time.Now()
+	defer t.Delegate.LogMessage("Finished with", conn.RemoteAddr().String(), "in", time.Since(tNow).String())
 
+	defer conn.Close()
 	// Read in the Message Sent from the Client
 	newMessage, err := message.ReadMessageFromConnection(conn)
 	if err != nil {

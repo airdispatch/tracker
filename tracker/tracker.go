@@ -55,6 +55,7 @@ type myTracker struct {
 }
 
 func (myTracker) SaveRecord(address *identity.Address, record *message.SignedMessage, alias string) {
+	fmt.Println("Saving Address", address.String(), alias)
 	// Store the RegisterdAddress in the Database
 	storedAddresses[address.String()] = record
 
@@ -64,12 +65,14 @@ func (myTracker) SaveRecord(address *identity.Address, record *message.SignedMes
 }
 
 func (myTracker) GetRecordByAddress(address *identity.Address) *message.SignedMessage {
+	fmt.Println("Getting Address", address.String())
 	// Lookup the Address (by address) in the Database
 	info, _ := storedAddresses[address.String()]
 	return info
 }
 
 func (myTracker) GetRecordByAlias(alias string) *message.SignedMessage {
+	fmt.Println("Getting Address", alias)
 	// Lookup the Address (by address) in the Database
 	info, _ := aliasedAddresses[alias]
 	return info
