@@ -2,9 +2,11 @@ package tracker
 
 import (
 	"airdispat.ch/crypto"
+	adErrors "airdispat.ch/errors"
 	"airdispat.ch/identity"
 	"airdispat.ch/message"
 	"airdispat.ch/tracker/wire"
+	w "airdispat.ch/wire"
 	"code.google.com/p/goprotobuf/proto"
 	"errors"
 	"fmt"
@@ -151,12 +153,15 @@ func (a *TrackerRouter) lookup(addrString string, alias string) (*identity.Addre
 		return nil, errors.New("Unable to verify message.")
 	}
 
-	d, mType, _, err := sin.ReconstructMessageWithoutTimestamp()
+	d, mType, h, err := sin.ReconstructMessageWithoutTimestamp()
 	if err != nil {
 		return nil, err
 	}
 
-	if mType != wire.RegistrationCode {
+	if mType == w.ErrorCode {
+		// Something occured on the other side.
+		return nil, adErrors.CreateErrorFromBytes(d, h)
+	} else if mType != wire.RegistrationCode {
 		return nil, errors.New("Got the wrong response.")
 	}
 
@@ -205,6 +210,8 @@ func (a *TrackerRouter) Register(key *identity.Identity, alias string) (err erro
 	if err != nil {
 		return
 	}
+
+	err = adErrors.CheckConnectionForError(conn)
 	return
 }
 

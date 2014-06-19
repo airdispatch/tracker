@@ -1,6 +1,7 @@
 package tracker
 
 import (
+	adErrors "airdispat.ch/errors"
 	"airdispat.ch/identity"
 	"airdispat.ch/message"
 	"airdispat.ch/tracker/wire"
@@ -90,23 +91,27 @@ func (t *Tracker) handleClient(conn net.Conn) {
 	newMessage, err := message.ReadMessageFromConnection(conn)
 	if err != nil {
 		t.handleError("Handle Client (Reading in Message)", err)
+		adErrors.CreateError(adErrors.UnexpectedError, "Unable to read message.", t.Key.Address).Send(t.Key, conn)
 		return
 	}
 
 	s, err := newMessage.Decrypt(t.Key)
 	if err != nil {
 		t.handleError("Unable to decrypt message.", err)
+		adErrors.CreateError(adErrors.UnexpectedError, "Unable to decrypt message.", t.Key.Address).Send(t.Key, conn)
 		return
 	}
 
 	if !s.Verify() {
 		t.handleError("Unable to verify message.", nil)
+		adErrors.CreateError(adErrors.InvalidSignature, "Unable to verify message.", t.Key.Address).Send(t.Key, conn)
 		return
 	}
 
 	mes, typ, header, err := s.ReconstructMessage()
 	if err != nil {
 		t.handleError("Unable to reconstruct message.", err)
+		adErrors.CreateError(adErrors.UnexpectedError, "Unable to reconstruct message.", t.Key.Address).Send(t.Key, conn)
 		return
 	}
 
@@ -120,11 +125,14 @@ func (t *Tracker) handleClient(conn net.Conn) {
 		err := proto.Unmarshal(mes, assigned)
 		if err != nil {
 			t.handleError("Handle Client (Unloading Registration Payload)", err)
+			adErrors.CreateError(adErrors.UnexpectedError, "Unable to unload message payload.", t.Key.Address).Send(t.Key, conn)
 			return
 		}
 
 		if assigned.GetAddress() != header.From.String() {
 			t.handleError("Unable to verify message integrity.", errors.New("Unable to verify message integrity."))
+			adErrors.CreateError(adErrors.InvalidSignature, "Signature doesn't match registration address.", t.Key.Address).Send(t.Key, conn)
+			return
 		}
 
 		t.Delegate.SaveRecord(header.From, s, assigned.GetUsername())
@@ -137,6 +145,7 @@ func (t *Tracker) handleClient(conn net.Conn) {
 
 		if err != nil {
 			t.handleError("Handle Client (Unloading Query Payload)", err)
+			adErrors.CreateError(adErrors.UnexpectedError, "Unable to unload message payload.", t.Key.Address).Send(t.Key, conn)
 			return
 		}
 
@@ -147,31 +156,41 @@ func (t *Tracker) handleClient(conn net.Conn) {
 func (t *Tracker) handleQuery(theAddress *identity.Address, req *wire.TrackerQuery, conn net.Conn) {
 	var info *message.SignedMessage
 	if req.GetUsername() == "" {
-		info = t.Delegate.GetRecordByAddress(identity.CreateAddressFromString(req.GetAddress()))
+		addr := identity.CreateAddressFromString(req.GetAddress())
+		if addr == nil {
+			adErrors.CreateError(adErrors.UnexpectedError, "Address is not valid.", t.Key.Address).Send(t.Key, conn)
+			return
+		} else {
+			info = t.Delegate.GetRecordByAddress(addr)
+		}
 	} else {
 		info = t.Delegate.GetRecordByAlias(req.GetUsername())
 	}
 
 	// Return an Error Message if we could not find the address
 	if info == nil {
-		// TODO: Errors
-		// common.CreateErrorMessage("400", "Couldn't find that Address at this Tracker.").SendToConnection(conn, t.Key)
+		adErrors.CreateError(adErrors.AddressNotFound, "Couldn't find that address.", t.Key.Address).Send(t.Key, conn)
 		return
 	}
 
 	err := info.AddSignature(t.Key)
 	if err != nil {
 		t.handleError("Couldn't add signature.", err)
+		adErrors.CreateError(adErrors.InternalError, "Couldn't sign query response.", t.Key.Address).Send(t.Key, conn)
+		return
 	}
 
 	enc, err := info.UnencryptedMessage(theAddress)
 	if err != nil {
 		t.handleError("Create unencrypted message.", err)
+		adErrors.CreateError(adErrors.InternalError, "Couldn't pack query response.", t.Key.Address).Send(t.Key, conn)
+		return
 	}
 
 	err = enc.SendMessageToConnection(conn)
 	if err != nil {
 		t.handleError("Send unencrypted message.", err)
+		adErrors.CreateError(adErrors.InternalError, "Couldn't send query response.", t.Key.Address).Send(t.Key, conn)
 		return
 	}
 }
