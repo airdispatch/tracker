@@ -14,12 +14,13 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type TrackerRegister struct {
-	Address          *string `protobuf:"bytes,1,req,name=address" json:"address,omitempty"`
-	EncryptionKey    []byte  `protobuf:"bytes,2,req,name=encryption_key" json:"encryption_key,omitempty"`
-	Location         *string `protobuf:"bytes,3,req,name=location" json:"location,omitempty"`
-	Expires          *uint64 `protobuf:"varint,4,req,name=expires" json:"expires,omitempty"`
-	Username         *string `protobuf:"bytes,5,opt,name=username" json:"username,omitempty"`
-	XXX_unrecognized []byte  `json:"-"`
+	Address          *string   `protobuf:"bytes,1,req,name=address" json:"address,omitempty"`
+	EncryptionKey    []byte    `protobuf:"bytes,2,req,name=encryption_key" json:"encryption_key,omitempty"`
+	Location         *string   `protobuf:"bytes,3,req,name=location" json:"location,omitempty"`
+	Expires          *uint64   `protobuf:"varint,4,req,name=expires" json:"expires,omitempty"`
+	Redirect         *Redirect `protobuf:"bytes,5,opt,name=redirect" json:"redirect,omitempty"`
+	Username         *string   `protobuf:"bytes,6,opt,name=username" json:"username,omitempty"`
+	XXX_unrecognized []byte    `json:"-"`
 }
 
 func (m *TrackerRegister) Reset()         { *m = TrackerRegister{} }
@@ -52,6 +53,13 @@ func (m *TrackerRegister) GetExpires() uint64 {
 		return *m.Expires
 	}
 	return 0
+}
+
+func (m *TrackerRegister) GetRedirect() *Redirect {
+	if m != nil {
+		return m.Redirect
+	}
+	return nil
 }
 
 func (m *TrackerRegister) GetUsername() string {
@@ -91,6 +99,38 @@ func (m *TrackerQuery) GetNeedKey() bool {
 		return *m.NeedKey
 	}
 	return false
+}
+
+type Redirect struct {
+	Types            *string `protobuf:"bytes,1,req,name=types" json:"types,omitempty"`
+	Alias            *string `protobuf:"bytes,2,req,name=alias" json:"alias,omitempty"`
+	Address          *string `protobuf:"bytes,3,opt,name=address" json:"address,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *Redirect) Reset()         { *m = Redirect{} }
+func (m *Redirect) String() string { return proto.CompactTextString(m) }
+func (*Redirect) ProtoMessage()    {}
+
+func (m *Redirect) GetTypes() string {
+	if m != nil && m.Types != nil {
+		return *m.Types
+	}
+	return ""
+}
+
+func (m *Redirect) GetAlias() string {
+	if m != nil && m.Alias != nil {
+		return *m.Alias
+	}
+	return ""
+}
+
+func (m *Redirect) GetAddress() string {
+	if m != nil && m.Address != nil {
+		return *m.Address
+	}
+	return ""
 }
 
 func init() {
