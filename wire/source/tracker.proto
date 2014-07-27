@@ -8,7 +8,9 @@ message TrackerRegister {
 
 	required uint64 expires = 4; // The time at which this registration expires.
 
-	optional string username = 5;  // An optional username field
+	optional Redirect redirect = 5;
+
+	optional string username = 6;  // An optional username field
 }
 
 // TQE - Used to query the mailserver for the location of the address.
@@ -19,4 +21,10 @@ message TrackerQuery {
 
 	// The Requester may specify False here if it does not want the Key Returned
 	optional bool need_key = 3;
+}
+
+message Redirect {
+	required string types   = 1;
+	required string alias   = 2;
+	optional string address = 3;
 }
