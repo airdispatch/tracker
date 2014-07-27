@@ -8,7 +8,7 @@ message TrackerRegister {
 
 	required uint64 expires = 4; // The time at which this registration expires.
 
-	optional Redirect redirect = 5;
+	repeated Redirect redirect = 5;
 
 	optional string username = 6;  // An optional username field
 }

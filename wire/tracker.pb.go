@@ -14,13 +14,13 @@ var _ = &json.SyntaxError{}
 var _ = math.Inf
 
 type TrackerRegister struct {
-	Address          *string   `protobuf:"bytes,1,req,name=address" json:"address,omitempty"`
-	EncryptionKey    []byte    `protobuf:"bytes,2,req,name=encryption_key" json:"encryption_key,omitempty"`
-	Location         *string   `protobuf:"bytes,3,req,name=location" json:"location,omitempty"`
-	Expires          *uint64   `protobuf:"varint,4,req,name=expires" json:"expires,omitempty"`
-	Redirect         *Redirect `protobuf:"bytes,5,opt,name=redirect" json:"redirect,omitempty"`
-	Username         *string   `protobuf:"bytes,6,opt,name=username" json:"username,omitempty"`
-	XXX_unrecognized []byte    `json:"-"`
+	Address          *string     `protobuf:"bytes,1,req,name=address" json:"address,omitempty"`
+	EncryptionKey    []byte      `protobuf:"bytes,2,req,name=encryption_key" json:"encryption_key,omitempty"`
+	Location         *string     `protobuf:"bytes,3,req,name=location" json:"location,omitempty"`
+	Expires          *uint64     `protobuf:"varint,4,req,name=expires" json:"expires,omitempty"`
+	Redirect         []*Redirect `protobuf:"bytes,5,rep,name=redirect" json:"redirect,omitempty"`
+	Username         *string     `protobuf:"bytes,6,opt,name=username" json:"username,omitempty"`
+	XXX_unrecognized []byte      `json:"-"`
 }
 
 func (m *TrackerRegister) Reset()         { *m = TrackerRegister{} }
@@ -55,7 +55,7 @@ func (m *TrackerRegister) GetExpires() uint64 {
 	return 0
 }
 
-func (m *TrackerRegister) GetRedirect() *Redirect {
+func (m *TrackerRegister) GetRedirect() []*Redirect {
 	if m != nil {
 		return m.Redirect
 	}
