@@ -1,10 +1,12 @@
 package tracker
 
 import (
-	"airdispat.ch/identity"
-	"airdispat.ch/message"
 	"testing"
 	"time"
+
+	"airdispat.ch/identity"
+	"airdispat.ch/message"
+	"airdispat.ch/routing"
 )
 
 func TestTracker(t *testing.T) {
@@ -14,7 +16,8 @@ func TestTracker(t *testing.T) {
 	}
 
 	testTracker := &testingTracker{
-		storage: make(map[string]*message.SignedMessage),
+		addressedStorage: make(map[string]*message.SignedMessage),
+		aliasedStorage:   make(map[string]*message.SignedMessage),
 	}
 
 	tracker := &Tracker{
@@ -38,18 +41,31 @@ func TestTracker(t *testing.T) {
 		t.Error(err)
 	}
 
-	router := &TrackerRouter{
+	router := &Router{
 		URL:    "localhost:9090",
-		origin: toLog,
+		Origin: toLog,
 	}
 
-	err = router.Register(toLog)
+	err = router.Register(toLog, "hunter", nil)
 	if err != nil {
 		t.Error(err)
 	}
 
 	addr := identity.CreateAddressFromString(toLog.Address.String())
-	idAddr, err := router.Lookup(addr.String())
+	idAddr, err := router.Lookup(addr.String(), routing.LookupTypeDEFAULT)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if idAddr.String() != addr.String() {
+		t.Error("Returned address is not the same as registered address.")
+	}
+
+	if idAddr.Location != toLog.Address.Location {
+		t.Error("Returned Location is not the same.")
+	}
+
+	idAddr, err = router.LookupAlias("hunter", routing.LookupTypeDEFAULT)
 	if err != nil {
 		t.Error(err)
 	}
@@ -66,14 +82,23 @@ func TestTracker(t *testing.T) {
 // Simple Fake Tracker
 type testingTracker struct {
 	BasicTracker
-	storage map[string]*message.SignedMessage
+	addressedStorage map[string]*message.SignedMessage
+	aliasedStorage   map[string]*message.SignedMessage
 }
 
-func (t testingTracker) SaveRecord(address *identity.Address, record *message.SignedMessage) {
-	t.storage[address.String()] = record
+func (t testingTracker) SaveRecord(address *identity.Address, record *message.SignedMessage, alias string) {
+	t.addressedStorage[address.String()] = record
+	if alias != "" {
+		t.aliasedStorage[alias] = record
+	}
 }
 
 func (t testingTracker) GetRecordByAddress(address *identity.Address) *message.SignedMessage {
-	info, _ := t.storage[address.String()]
+	info, _ := t.addressedStorage[address.String()]
+	return info
+}
+
+func (t testingTracker) GetRecordByAlias(alias string) *message.SignedMessage {
+	info, _ := t.aliasedStorage[alias]
 	return info
 }
