@@ -14,6 +14,12 @@ import (
 	w "airdispat.ch/wire"
 )
 
+// RedirectHandler is to ensure that different implementations can handle redirects
+// differently.
+type RedirectHandler interface {
+	HandleRedirect(routing.LookupType, routing.Redirect) (*identity.Address, error)
+}
+
 // GetTrackingServerLocationFromURL will attempt to get information about a tracking server
 // from a DNS SRV Record.
 func GetTrackingServerLocationFromURL(url string) string {
@@ -30,8 +36,9 @@ func GetTrackingServerLocationFromURL(url string) string {
 // Router implements the AirDispatch routing.Router interface for the
 // tracker system.
 type Router struct {
-	URL    string
-	Origin *identity.Identity
+	URL        string
+	Origin     *identity.Identity
+	Redirector RedirectHandler
 }
 
 // Lookup will perform a Router lookup on an address, and return a
@@ -105,7 +112,7 @@ func (a *Router) lookup(addrString string, alias string, name routing.LookupType
 
 	data, ok := reg.Redirect[string(name)]
 	if ok {
-		addr, err := a.LookupAlias(data.Alias, name)
+		addr, err := a.Redirector.HandleRedirect(name, data)
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +124,7 @@ func (a *Router) lookup(addrString string, alias string, name routing.LookupType
 
 	all, ok := reg.Redirect["*"]
 	if ok {
-		addr, err := a.LookupAlias(all.Alias, name)
+		addr, err := a.Redirector.HandleRedirect(name, all)
 		if err != nil {
 			return nil, err
 		}

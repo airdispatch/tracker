@@ -16,7 +16,7 @@ type ListRouter struct {
 
 // CreateListRouter will return a ListRouter for a slice of currently functioning
 // routers.
-func CreateListRouter(trackers ...routing.Router) *ListRouter {
+func CreateListRouter(redirect RedirectHandler, trackers ...routing.Router) *ListRouter {
 	output := &ListRouter{}
 
 	if trackers == nil {
@@ -29,12 +29,16 @@ func CreateListRouter(trackers ...routing.Router) *ListRouter {
 
 // CreateListRouterWithStrings will return a ListRouter with an identity and
 // list of tracker URLS.
-func CreateListRouterWithStrings(currentIdentity *identity.Identity, trackers ...string) *ListRouter {
+func CreateListRouterWithStrings(redirect RedirectHandler, currentIdentity *identity.Identity, trackers ...string) *ListRouter {
 	output := &ListRouter{}
 	trackerList := make([]routing.Router, len(trackers))
 
 	for i, v := range trackers {
-		trackerList[i] = &Router{v, currentIdentity}
+		trackerList[i] = &Router{
+			URL:        v,
+			Origin:     currentIdentity,
+			Redirector: redirect,
+		}
 	}
 
 	output.trackers = trackerList
