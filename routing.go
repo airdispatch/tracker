@@ -9,6 +9,7 @@ import (
 	adErrors "airdispat.ch/errors"
 	"airdispat.ch/identity"
 	"airdispat.ch/message"
+	"airdispat.ch/routing"
 	"airdispat.ch/tracker/wire"
 	w "airdispat.ch/wire"
 )
@@ -35,17 +36,17 @@ type Router struct {
 
 // Lookup will perform a Router lookup on an address, and return a
 // new (*identity).Address.
-func (a *Router) Lookup(addrString string) (*identity.Address, error) {
-	return a.lookup(addrString, "")
+func (a *Router) Lookup(addrString string, name routing.LookupType) (*identity.Address, error) {
+	return a.lookup(addrString, "", name)
 }
 
 // LookupAlias will perform a Router lookup on a certain alias, and return a
 // new (*identity).Address.
-func (a *Router) LookupAlias(alias string) (*identity.Address, error) {
-	return a.lookup("", alias)
+func (a *Router) LookupAlias(alias string, name routing.LookupType) (*identity.Address, error) {
+	return a.lookup("", alias, name)
 }
 
-func (a *Router) lookup(addrString string, alias string) (*identity.Address, error) {
+func (a *Router) lookup(addrString string, alias string, name routing.LookupType) (*identity.Address, error) {
 	q := &QueryMessage{
 		From:    a.Origin,
 		Address: addrString,
@@ -102,6 +103,30 @@ func (a *Router) lookup(addrString string, alias string) (*identity.Address, err
 
 	reg := RegistrationMessageFromBytes(d)
 
+	data, ok := reg.Redirect[string(name)]
+	if ok {
+		addr, err := a.LookupAlias(data.Alias, name)
+		if err != nil {
+			return nil, err
+		}
+		if addr.String() != data.Fingerprint {
+			return nil, errors.New("Redirected address does not have correct fingerprint.")
+		}
+		return addr, nil
+	}
+
+	all, ok := reg.Redirect["*"]
+	if ok {
+		addr, err := a.LookupAlias(all.Alias, name)
+		if err != nil {
+			return nil, err
+		}
+		if addr.String() != all.Fingerprint {
+			return nil, errors.New("Redirected address does not have correct fingerprint.")
+		}
+		return addr, nil
+	}
+
 	i := identity.CreateAddressFromString(reg.Address)
 	i.Location = reg.Location
 
@@ -116,13 +141,14 @@ func (a *Router) lookup(addrString string, alias string) (*identity.Address, err
 }
 
 // Register will register an identity (and alias) with a tracker.
-func (a *Router) Register(key *identity.Identity, alias string) (err error) {
+func (a *Router) Register(key *identity.Identity, alias string, redirects map[string]routing.Redirect) (err error) {
 	byteKey := crypto.RSAToBytes(key.Address.EncryptionKey)
 
 	q := &RegistrationMessage{
 		Address:  key.Address.String(),
 		Location: key.Address.Location,
 		Alias:    alias,
+		Redirect: redirects,
 		Key:      byteKey,
 	}
 

@@ -5,6 +5,7 @@ import (
 
 	"airdispat.ch/identity"
 	"airdispat.ch/message"
+	"airdispat.ch/routing"
 	"airdispat.ch/tracker/wire"
 	"code.google.com/p/goprotobuf/proto"
 )
@@ -42,21 +43,13 @@ func (b *QueryMessage) Header() message.Header {
 	}
 }
 
-// Redirect is a type of record on a Registration that alerts the client to send
-// messages of a certain type to a different location.
-type Redirect struct {
-	Type    string
-	Address string
-	Alias   string
-}
-
 // RegistrationMessage is the record that is sent to the Tracker to allow
 // setting up a new record.
 type RegistrationMessage struct {
 	Address  string
 	Location string
 	Alias    string
-	Redirect map[string]*Redirect
+	Redirect map[string]routing.Redirect
 	Key      []byte
 }
 
@@ -69,12 +62,12 @@ func RegistrationMessageFromBytes(b []byte) *RegistrationMessage {
 		return nil
 	}
 
-	redirect := make(map[string]*Redirect)
+	redirect := make(map[string]routing.Redirect)
 	for _, v := range q.GetRedirect() {
-		redirect[v.GetTypes()] = &Redirect{
-			Type:    v.GetTypes(),
-			Address: v.GetAddress(),
-			Alias:   v.GetAlias(),
+		redirect[v.GetTypes()] = routing.Redirect{
+			Type:        routing.LookupType(v.GetTypes()),
+			Fingerprint: v.GetAddress(),
+			Alias:       v.GetAlias(),
 		}
 	}
 
@@ -83,6 +76,7 @@ func RegistrationMessageFromBytes(b []byte) *RegistrationMessage {
 		Location: q.GetLocation(),
 		Key:      q.GetEncryptionKey(),
 		Alias:    q.GetUsername(),
+		Redirect: redirect,
 	}
 }
 
@@ -99,10 +93,11 @@ func (b *RegistrationMessage) ToBytes() []byte {
 
 	var redirects []*wire.Redirect
 	for _, v := range b.Redirect {
+		stringType := string(v.Type)
 		redirects = append(redirects, &wire.Redirect{
-			Types:   &v.Type,
+			Types:   &stringType,
 			Alias:   &v.Alias,
-			Address: &v.Address,
+			Address: &v.Fingerprint,
 		})
 	}
 	bytes, err := proto.Marshal(q)

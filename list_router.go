@@ -83,23 +83,23 @@ func (a *ListRouter) lookup(query queryFunc) (*identity.Address, error) {
 }
 
 // Lookup will return a new identity.Address for an address fingerprint.
-func (a *ListRouter) Lookup(addr string) (*identity.Address, error) {
+func (a *ListRouter) Lookup(addr string, name routing.LookupType) (*identity.Address, error) {
 	return a.lookup(func(r routing.Router) (*identity.Address, error) {
-		return r.Lookup(addr)
+		return r.Lookup(addr, name)
 	})
 }
 
 // LookupAlias will return a new identity.Address for an alias.
-func (a *ListRouter) LookupAlias(alias string) (*identity.Address, error) {
+func (a *ListRouter) LookupAlias(alias string, name routing.LookupType) (*identity.Address, error) {
 	return a.lookup(func(r routing.Router) (*identity.Address, error) {
-		return r.LookupAlias(alias)
+		return r.LookupAlias(alias, name)
 	})
 }
 
 // Register will register an address with a list of trackers.
-func (a *ListRouter) Register(key *identity.Identity, alias string) error {
+func (a *ListRouter) Register(key *identity.Identity, alias string, redirects map[string]routing.Redirect) error {
 	for _, tracker := range a.trackers {
-		go tracker.Register(key, alias)
+		go tracker.Register(key, alias, redirects)
 	}
 	return nil
 }
