@@ -69,6 +69,15 @@ func RegistrationMessageFromBytes(b []byte) *RegistrationMessage {
 		return nil
 	}
 
+	redirect := make(map[string]*Redirect)
+	for _, v := range q.GetRedirect() {
+		redirect[v.GetTypes()] = &Redirect{
+			Type:    v.GetTypes(),
+			Address: v.GetAddress(),
+			Alias:   v.GetAlias(),
+		}
+	}
+
 	return &RegistrationMessage{
 		Address:  q.GetAddress(),
 		Location: q.GetLocation(),
@@ -86,6 +95,15 @@ func (b *RegistrationMessage) ToBytes() []byte {
 		Username:      &b.Alias,
 		Expires:       &expirationTime,
 		EncryptionKey: b.Key,
+	}
+
+	var redirects []*wire.Redirect
+	for _, v := range b.Redirect {
+		redirects = append(redirects, &wire.Redirect{
+			Types:   &v.Type,
+			Alias:   &v.Alias,
+			Address: &v.Address,
+		})
 	}
 	bytes, err := proto.Marshal(q)
 	if err != nil {
