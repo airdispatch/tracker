@@ -100,6 +100,9 @@ func (b *RegistrationMessage) ToBytes() []byte {
 			Address: &v.Fingerprint,
 		})
 	}
+
+	q.Redirect = redirects
+
 	bytes, err := proto.Marshal(q)
 	if err != nil {
 		return nil
