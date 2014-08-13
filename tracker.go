@@ -1,14 +1,15 @@
 package tracker
 
 import (
+	"errors"
+	"net"
+	"time"
+
 	adErrors "airdispat.ch/errors"
 	"airdispat.ch/identity"
 	"airdispat.ch/message"
 	"airdispat.ch/tracker/wire"
 	"code.google.com/p/goprotobuf/proto"
-	"errors"
-	"net"
-	"time"
 )
 
 // The error Structure used to store all of the
@@ -108,7 +109,7 @@ func (t *Tracker) handleClient(conn net.Conn) {
 		return
 	}
 
-	mes, typ, header, err := s.ReconstructMessage()
+	mes, typ, header, err := s.ReconstructMessageWithTimestamp()
 	if err != nil {
 		t.handleError("Unable to reconstruct message.", err)
 		adErrors.CreateError(adErrors.UnexpectedError, "Unable to reconstruct message.", t.Key.Address).Send(t.Key, conn)

@@ -96,7 +96,7 @@ func (a *Router) lookup(addrString string, alias string, name routing.LookupType
 		return nil, errors.New("Unable to verify message.")
 	}
 
-	d, mType, h, err := sin.ReconstructMessageWithoutTimestamp()
+	d, mType, h, err := sin.ReconstructMessage()
 	if err != nil {
 		return nil, err
 	}
