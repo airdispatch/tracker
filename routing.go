@@ -25,6 +25,7 @@ type RedirectHandler interface {
 func GetTrackingServerLocationFromURL(url string) string {
 	_, recs, err := net.LookupSRV("adtp", "tcp", url)
 	if err != nil {
+		fmt.Println("Got error looking up server location", err)
 		return url
 	}
 	for _, s := range recs {
@@ -136,6 +137,7 @@ func (a *Router) lookup(addrString string, alias string, name routing.LookupType
 
 	i := identity.CreateAddressFromString(reg.Address)
 	i.Location = reg.Location
+	i.Alias = alias
 
 	rsa, err := crypto.BytesToRSA(reg.Key)
 	if err != nil {
