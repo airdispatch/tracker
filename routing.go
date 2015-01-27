@@ -137,7 +137,7 @@ func (a *Router) lookup(addrString string, alias string, name routing.LookupType
 
 	i := identity.CreateAddressFromString(reg.Address)
 	i.Location = reg.Location
-	i.Alias = alias
+	i.Alias = fmt.Sprintf("%s@%s", alias, a.URL)
 
 	rsa, err := crypto.BytesToRSA(reg.Key)
 	if err != nil {
